@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.env
+
+# Flask & ML
+*.sqlite3
+customer_churn.db
+backend/uploads/*
+backend/ml/*.pkl
+!backend/uploads/.gitkeep
+!backend/ml/.gitkeep
+
+# Node.js / React
+node_modules/
+dist/
+.npm
+package-lock.json
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
