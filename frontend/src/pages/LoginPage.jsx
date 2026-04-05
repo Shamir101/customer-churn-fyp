@@ -1,14 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loginUser } from '../api';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Mock login logic -> redirect to admin
-    navigate('/admin');
+    setErrorMsg('');
+    try {
+      if (isLogin) {
+        // Use email as username based on our plan
+        const resp = await loginUser({ username: email, password, role: 'admin' });
+        localStorage.setItem('token', resp.access_token);
+        navigate('/admin');
+      } else {
+        // Mock registration failure/message for now, keep focus on login
+        setErrorMsg('Registration UI not fully hooked up to backend yet.');
+      }
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
   };
 
   return (
@@ -18,9 +34,11 @@ export default function LoginPage() {
         {!isLogin && (
           <input type="text" placeholder="Full Name" style={inputStyle} required />
         )}
-        <input type="email" placeholder="Email Address" style={inputStyle} required />
-        <input type="password" placeholder="Password" style={inputStyle} required />
+        <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} required />
+        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} required />
         
+        {errorMsg && <div style={{color: '#f87171', fontSize: '0.9rem'}}>{errorMsg}</div>}
+
         <button type="submit" className="btn-primary" style={{ marginTop: '1rem' }}>
           {isLogin ? 'Sign In' : 'Register'}
         </button>

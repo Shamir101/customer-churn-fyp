@@ -25,6 +25,10 @@ def create_app():
     with app.app_context():
         db.create_all()
         
+    @app.route('/')
+    def index():
+        return {"status": "success", "message": "Customer Churn API is running!"}, 200
+
     return app
 
 if __name__ == '__main__':
