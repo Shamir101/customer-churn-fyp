@@ -1,0 +1,90 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="dashboard-layout" style="animation: fadeIn 0.5s ease-out;">
+  <h2>Predict Single Customer Churn</h2>
+  
+  <div class="glass-card" style="max-width: 600px; margin: 2rem auto;">
+    <form id="predict-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+      <div>
+        <label class="form-label">Tenure (Months)</label>
+        <input type="number" id="tenure" class="form-input" placeholder="e.g. 12" required />
+      </div>
+      <div>
+        <label class="form-label">Monthly Charges ($)</label>
+        <input type="number" step="0.01" id="monthly-charges" class="form-input" placeholder="e.g. 75.50" required />
+      </div>
+      
+      <div style="grid-column: span 2;">
+        <label class="form-label">Contract Type</label>
+        <select id="contract-type" class="form-input">
+          <option>Month-to-month</option>
+          <option>One year</option>
+          <option>Two year</option>
+        </select>
+      </div>
+      
+      <div style="grid-column: span 2; margin-top: 1rem;">
+        <div id="error-msg" style="color: #f87171; margin-bottom: 1rem; display: none;"></div>
+        <button type="submit" id="btn-predict" class="btn-primary" style="width: 100%;">Run Prediction</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="prediction-result" class="glass-card" style="max-width: 600px; margin: 2rem auto; text-align: center; display: none;">
+    <h3 id="result-title" style="margin: 0 0 1rem 0;"></h3>
+    <p><strong>Recommendation:</strong> <span id="result-rec"></span></p>
+  </div>
+</div>
+
+<script>
+  document.getElementById('predict-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-predict');
+    const errDiv = document.getElementById('error-msg');
+    const resultDiv = document.getElementById('prediction-result');
+    
+    // Capture form values
+    const tenure = document.getElementById('tenure').value;
+    const monthlyCharges = document.getElementById('monthly-charges').value;
+    const contractType = document.getElementById('contract-type').value;
+
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    errDiv.style.display = 'none';
+    resultDiv.style.display = 'none';
+    
+    try {
+      const res = await AppAPI.predictSingleCustomer({
+        model_id: 1, // Mock
+        features: {
+          tenure: parseInt(tenure),
+          monthly_charges: parseFloat(monthlyCharges),
+          contract_type: contractType
+        }
+      });
+      
+      const isHighRisk = res.risk_level === 'High';
+      
+      // Update UI Based on response
+      resultDiv.style.borderColor = isHighRisk ? 'rgba(239, 68, 68, 0.4)' : 'rgba(52, 211, 153, 0.4)';
+      
+      const title = document.getElementById('result-title');
+      title.style.color = isHighRisk ? '#f87171' : '#34d399';
+      title.textContent = `${res.risk_level} Risk (${(res.churn_probability * 100).toFixed(0)}% Probability)`;
+      
+      document.getElementById('result-rec').textContent = isHighRisk 
+        ? 'Immediate personal outreach, exclusive discount, loyalty program entry.' 
+        : 'Standard email engagement, no immediate action required.';
+        
+      resultDiv.style.display = 'block';
+    } catch(err) {
+      errDiv.textContent = err.message;
+      errDiv.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Run Prediction';
+    }
+  });
+</script>
+{% endblock %}

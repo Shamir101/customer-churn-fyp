@@ -1,0 +1,106 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="dashboard-layout" style="animation: fadeIn 0.5s ease-out;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2>Admin Overview</h2>
+    <div>
+      <input type="file" id="upload-input" style="display: none" accept=".csv" />
+      <button class="btn-primary" onclick="document.getElementById('upload-input').click()">Upload Dataset</button>
+    </div>
+  </div>
+  
+  <div id="status-container" style="display: none; padding: 1rem; margin-bottom: 2rem; background: rgba(255,255,255,0.1); border-radius: 8px; color: #60a5fa;">
+    <strong>Status:</strong> <span id="status-text"></span>
+  </div>
+
+  <div class="card-grid">
+    <div class="glass-card">
+      <h3>Active Models</h3>
+      <div id="models-list">
+        <p>LightGBM (84.2% Acc)</p>
+        <p>XGBoost (83.5% Acc)</p>
+      </div>
+      <button class="btn-primary" id="btn-retrain" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-top: 1rem;">Retrain Models</button>
+    </div>
+    
+    <div class="glass-card">
+      <h3>Batch Predictions</h3>
+      <p>Process a massive roster of clients across all active thresholds.</p>
+      <input type="file" id="batch-input" style="display: none" accept=".csv" />
+      <button class="btn-primary" onclick="document.getElementById('batch-input').click()" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-top: 1rem;">Pick File & Run Batch</button>
+    </div>
+
+    <div class="glass-card">
+      <h3>Retention Rules Engine</h3>
+      <p>Adjust risk brackets and automated engagement strategies.</p>
+      <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-top: 1rem; opacity: 0.5; cursor: not-allowed;">Configure Logic (Coming Soon)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let datasetId = null;
+
+  function setStatus(msg) {
+    const container = document.getElementById('status-container');
+    const text = document.getElementById('status-text');
+    if(msg) {
+      container.style.display = 'block';
+      text.textContent = msg;
+    } else {
+      container.style.display = 'none';
+    }
+  }
+
+  // Handle Upload
+  document.getElementById('upload-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setStatus('Uploading dataset...');
+    try {
+      const res = await AppAPI.uploadDataset(file);
+      datasetId = res.dataset_id;
+      setStatus(`Dataset uploaded successfully! (ID: ${res.dataset_id})`);
+    } catch (err) {
+      setStatus(`Upload failed: ${err.message}`);
+    }
+    e.target.value = ''; // reset
+  });
+
+  // Handle Retrain
+  document.getElementById('btn-retrain').addEventListener('click', async () => {
+    if (!datasetId) {
+      setStatus('Please upload a new dataset first to retrain models.');
+      return;
+    }
+    setStatus('Training new model. This might take a minute...');
+    try {
+      const res = await AppAPI.trainModel(datasetId);
+      setStatus(`Training complete! New Model ID: ${res.model_id}`);
+      
+      // Add dynamically to list
+      const p = document.createElement('p');
+      p.textContent = `New Custom Model (${(res.accuracy * 100).toFixed(1)}% Acc)`;
+      const list = document.getElementById('models-list');
+      list.insertBefore(p, list.firstChild);
+    } catch (err) {
+      setStatus(`Training failed: ${err.message}`);
+    }
+  });
+
+  // Handle Batch Job
+  document.getElementById('batch-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setStatus('Processing batch predictions...');
+    try {
+      const res = await AppAPI.runBatchPrediction(file, 1);
+      setStatus(`Batch complete! Successfully processed records. ${res.message}`);
+    } catch (err) {
+      setStatus(`Batch failed: ${err.message}`);
+    }
+    e.target.value = ''; // reset
+  });
+</script>
+{% endblock %}

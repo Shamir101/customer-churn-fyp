@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from config import Config
 from extensions import db, jwt, cors
 from routes import auth, dataset
@@ -27,7 +27,19 @@ def create_app():
         
     @app.route('/')
     def index():
-        return {"status": "success", "message": "Customer Churn API is running!"}, 200
+        return render_template('index.html')
+
+    @app.route('/login')
+    def login():
+        return render_template('login.html')
+
+    @app.route('/admin')
+    def admin():
+        return render_template('admin.html')
+
+    @app.route('/user')
+    def user():
+        return render_template('user.html')
 
     return app
 

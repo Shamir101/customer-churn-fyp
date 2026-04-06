@@ -1,16 +1,12 @@
 @echo off
 echo ================================================
-echo Starting Customer Churn Full Stack Application
+echo Starting Customer Churn Full Stack Application (Flask Native)
 echo ================================================
 echo.
-echo Launching the Backend in a new window...
+echo Launching the Backend...
 start cmd /k "call run_backend.bat"
 
-echo Launching the Frontend in a new window...
-start cmd /k "call run_frontend.bat"
-
 echo.
-echo Both services have been started in separate windows!
-echo If you close those windows, the services will stop.
+echo View your application at http://127.0.0.1:5000
 echo.
 pause

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChurnAI Predictor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+</head>
+<body>
+  <div class="layout">
+    <header class="glass-header">
+      <h1><a href="/">ChurnAI Predictor</a></h1>
+      <nav>
+        <a href="/admin">Admin</a>
+        <a href="/user">Agent Portal</a>
+        <a id="nav-login" href="/login" class="btn-primary" style="color: white; text-decoration: none;">Login</a>
+      </nav>
+    </header>
+
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  
+  <script>
+    // Simple logic to change login to logout if token exists
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      const loginNav = document.getElementById('nav-login');
+      if (token) {
+        loginNav.textContent = 'Logout';
+        loginNav.href = '#';
+        loginNav.onclick = (e) => {
+          e.preventDefault();
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        };
+      }
+    });
+  </script>
+</body>
+</html>
