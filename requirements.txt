@@ -10,3 +10,6 @@ Flask
 Flask-SQLAlchemy
 Flask-JWT-Extended
 Flask-CORS
+Werkzeug
+python-dotenv
+email-validator

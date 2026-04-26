@@ -12,10 +12,12 @@ class Admin(db.Model):
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     sessions = db.relationship('Session', backref='user_session', lazy=True)
+    datasets = db.relationship('Dataset', backref='user_owner', lazy=True)
 
 class Session(db.Model):
     __tablename__ = 'sessions'
@@ -31,7 +33,8 @@ class Dataset(db.Model):
     filename = db.Column(db.String(150), nullable=False)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50), default='Uploaded') # Uploaded, Preprocessed
-    admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'), nullable=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     models = db.relationship('MLModel', backref='dataset', lazy=True)
 
 class MLModel(db.Model):
