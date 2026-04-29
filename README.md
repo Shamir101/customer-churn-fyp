@@ -8,9 +8,10 @@ ChurnSense is a full-stack, machine learning-powered application designed to pre
 
 - **Machine Learning Engine**: Built on the IBM Telco Customer Churn dataset utilizing a highly optimized **LightGBM** classifier for fast and accurate real-time inference.
 - **Glassmorphism UI**: A beautifully crafted, modern frontend using pure HTML, CSS, and vanilla JavaScript (served via Jinja2 templates).
+- **Interactive Dashboards & Graphing**: Extensive use of Chart.js to render beautiful Risk Gauges, Radial Customer Profiles, and Interactive Batch Prediction Dashboards.
 - **Secure Authentication**: Custom user registration and login system utilizing JSON Web Tokens (JWT) for secure session management.
 - **Risk Classification & Retention Strategies**: Not only predicts if a customer will churn but classifies them into Risk Tiers (High, Medium, Low) and suggests actionable retention strategies.
-- **Admin Dashboard**: Upload new datasets, view model evaluation metrics, and monitor prediction history.
+- **Batch Processing & Data Integrity**: Run predictions simultaneously on thousands of customers with a dedicated dashboard. Built-in **Strict Schema Validation** ensures that unrecognized CSVs are cleanly rejected to maintain application stability.
 
 ## 🏗️ Architecture
 
