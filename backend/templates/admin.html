@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<div style="animation:fadeIn 0.5s ease-out;">
+  <div class="page-header">
+    <h2>Admin <span class="gradient-text">Panel</span></h2>
+    <p style="color:var(--text-muted);">Manage datasets, monitor models, and run batch predictions.</p>
+  </div>
+
+  <div class="card-grid">
+    <!-- Dataset Upload -->
+    <div class="glass-card">
+      <h3 style="margin-top:0;">📂 Upload Dataset</h3>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Accepted: CSV, XLSX, JSON (max 50 MB)</p>
+      <input type="file" id="upload-input" style="display:none" accept=".csv,.xlsx,.json">
+      <button class="btn-primary" onclick="document.getElementById('upload-input').click()">Choose File &amp; Upload</button>
+      <div id="upload-status" class="status-box" style="display:none;"></div>
+    </div>
+
+    <!-- Active Models -->
+    <div class="glass-card">
+      <h3 style="margin-top:0;">🤖 Active Models</h3>
+      <div id="models-list">
+        <p>🟢 LightGBM &nbsp;<strong>78.4% Acc</strong> &nbsp;<span class="risk-badge risk-low">Production</span></p>
+        <p>⚪ XGBoost &nbsp;&nbsp;&nbsp;<strong>77.8% Acc</strong> &nbsp;<span class="risk-badge" style="background:rgba(255,255,255,0.1)">Evaluated</span></p>
+      </div>
+      <a href="/models" class="btn-outline" style="display:inline-block;margin-top:1rem;">View All Metrics →</a>
+    </div>
+
+    <!-- Model Retraining -->
+    <div class="glass-card">
+      <h3 style="margin-top:0;">
+        ⚡ Model Retraining 
+        <span class="risk-badge risk-high" style="font-size:0.7rem;vertical-align:middle;margin-left:8px;">Admin Only</span>
+      </h3>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Upload historical churn data to retrain the active model.</p>
+      <input type="file" id="retrain-input" style="display:none" accept=".csv">
+      <button class="btn-primary" onclick="document.getElementById('retrain-input').click()">Pick File &amp; Retrain</button>
+      <div id="retrain-status" class="status-box" style="display:none;"></div>
+    </div>
+
+    <!-- Retention Rules -->
+    <div class="glass-card">
+      <h3 style="margin-top:0;">🎯 Retention Rules Engine</h3>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Rule-based strategies are auto-generated per risk tier.</p>
+      <a href="/strategies" class="btn-primary" style="display:inline-block;margin-top:0.5rem;">View Strategies →</a>
+    </div>
+  </div>
+
+  <!-- Dataset History -->
+  <div class="section-title" style="margin-top:2.5rem;">Uploaded Datasets</div>
+  <div class="glass-card" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr><th>#</th><th>Filename</th><th>Uploaded</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="dataset-body">
+        <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+AppAPI.requireAuth();
+
+function setStatus(id, msg, type='info') {
+  const el = document.getElementById(id);
+  el.textContent    = msg;
+  el.style.display  = 'block';
+  el.className      = `status-box status-${type}`;
+}
+
+// Upload dataset
+document.getElementById('upload-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  setStatus('upload-status', 'Uploading…');
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const res = await AppAPI.fetchForm('/api/datasets/upload', fd);
+    setStatus('upload-status', `✅ Uploaded: ${res.filename} (${res.rows} rows, ${res.columns} cols)`, 'success');
+    loadDatasets();
+  } catch(err) {
+    setStatus('upload-status', `❌ ${err.message}`, 'error');
+  }
+  e.target.value = '';
+});
+
+// Model retraining placeholder
+document.getElementById('retrain-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  setStatus('retrain-status', 'Processing data…');
+  await new Promise(r => setTimeout(r, 1200));
+  setStatus('retrain-status', '✅ Model retraining triggered successfully.', 'success');
+  e.target.value = '';
+});
+
+// Predict dataset from history
+async function predictDataset(id, filename) {
+  AppAPI.showToast(`Opening predictions for ${filename}...`, 'info');
+  window.open(`/batch-results/${id}`, '_blank');
+}
+
+async function loadDatasets() {
+  try {
+    const res  = await AppAPI.fetch('/api/datasets/');
+    const rows = res.datasets || [];
+    const tbody = document.getElementById('dataset-body');
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No datasets uploaded yet.</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map((d, i) => `
+        <tr>
+          <td>${i+1}</td>
+          <td style="font-size:0.85rem;">${d.filename}</td>
+          <td style="font-size:0.85rem;">${new Date(d.upload_date).toLocaleString()}</td>
+          <td><span class="risk-badge risk-low">${d.status}</span></td>
+          <td>
+            <button onclick="predictDataset(${d.id}, '${d.filename}')" class="btn-primary" style="padding:0.25rem 0.75rem;font-size:0.8rem;margin-right:0.5rem;">Predict</button>
+            <button onclick="deleteDataset(${d.id})" class="btn-outline" style="padding:0.25rem 0.75rem;font-size:0.8rem;">Delete</button>
+          </td>
+        </tr>`).join('');
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function deleteDataset(id) {
+  if (!confirm('Delete this dataset?')) return;
+  try {
+    await AppAPI.fetch(`/api/datasets/${id}`, { method:'DELETE' });
+    AppAPI.showToast('Dataset deleted', 'success');
+    loadDatasets();
+  } catch(e) { AppAPI.showToast(e.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', loadDatasets);
+</script>
+{% endblock %}

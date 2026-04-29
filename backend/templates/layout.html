@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ChurnSense{% endblock %} | ML-Based Churn Prediction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+</head>
+<body>
+  <div class="layout">
+
+    <!-- ── Navbar ─────────────────────────────────────────────── -->
+    <header class="glass-header">
+      <a href="/" class="brand">
+        <span class="brand-icon">⚡</span> ChurnSense
+      </a>
+      <nav id="main-nav">
+        <a href="/" class="nav-link">Home</a>
+        <!-- Shown when logged out -->
+        <span id="nav-guest">
+          <a href="/login"    class="nav-link">Login</a>
+          <a href="/register" class="btn-primary">Get Started</a>
+        </span>
+        <!-- Shown when logged in -->
+        <span id="nav-user" style="display:none; align-items:center; gap:1.2rem;">
+          <a href="/dashboard" class="nav-link">Dashboard</a>
+          <a href="/predict"   class="nav-link">Predict</a>
+          <a href="/admin"     class="nav-link">Admin</a>
+          <span id="nav-username" class="nav-link" style="color:var(--accent-primary);"></span>
+          <button onclick="AppAPI.logout()" class="btn-outline">Logout</button>
+        </span>
+      </nav>
+    </header>
+
+    <!-- ── Content ────────────────────────────────────────────── -->
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- ── Footer ─────────────────────────────────────────────── -->
+    <footer class="footer">
+      <p>© 2025 ChurnSense &nbsp;·&nbsp; ML-Based Customer Churn Prediction System &nbsp;·&nbsp; GCUF Final Year Project</p>
+    </footer>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <script>
+    // Auth-aware navbar
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      const name  = localStorage.getItem('userName');
+      if (token) {
+        document.getElementById('nav-guest').style.display = 'none';
+        document.getElementById('nav-user').style.display  = 'flex';
+        if (name) document.getElementById('nav-username').textContent = `Hi, ${name}`;
+      }
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

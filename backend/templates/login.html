@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="glass-card auth-card" style="animation: fadeIn 0.5s ease-out;">
+    <div class="auth-logo">⚡ ChurnSense</div>
+    <h2 class="auth-title">Welcome Back</h2>
+    <p class="auth-sub">Sign in to access your prediction dashboard</p>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input type="email" id="email" class="form-input" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input type="password" id="password" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+      </div>
+      <div class="form-check">
+        <input type="checkbox" id="remember-me">
+        <label for="remember-me">Remember me for 30 days</label>
+      </div>
+      <div id="error-msg" class="error-msg" style="display:none;"></div>
+      <button type="submit" id="btn-login" class="btn-primary btn-full">Sign In</button>
+    </form>
+
+    <p class="auth-footer">
+      <a href="/forgot-password" class="link">Forgot password?</a>
+      &nbsp;·&nbsp;
+      No account? <a href="/register" class="link">Register here</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn     = document.getElementById('btn-login');
+  const errDiv  = document.getElementById('error-msg');
+  errDiv.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Signing in…';
+
+  try {
+    const res = await AppAPI.login({
+      email:      document.getElementById('email').value.trim(),
+      password:   document.getElementById('password').value,
+      rememberMe: document.getElementById('remember-me').checked
+    });
+    localStorage.setItem('token',    res.token);
+    localStorage.setItem('userName', res.user.name);
+    AppAPI.showToast('Login successful! Redirecting…', 'success');
+    setTimeout(() => window.location.href = '/dashboard', 800);
+  } catch(err) {
+    errDiv.textContent   = err.message;
+    errDiv.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+});
+</script>
+{% endblock %}

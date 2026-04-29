@@ -1,0 +1,253 @@
+{% extends "layout.html" %}
+{% block title %}Predict Churn{% endblock %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div style="animation:fadeIn 0.5s ease-out;">
+  <div class="page-header">
+    <h2>Single Customer <span class="gradient-text">Churn Prediction</span></h2>
+    <p style="color:var(--text-muted);">Enter customer attributes to get an instant churn probability score.</p>
+  </div>
+
+  <div class="predict-layout">
+    <!-- ── Form ── -->
+    <div class="glass-card predict-form-card">
+      <h3 style="margin-top:0;">Customer Details</h3>
+      <form id="predict-form">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tenure (Months)</label>
+            <input type="number" id="tenure" class="form-input" placeholder="e.g. 24" min="0" max="72" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Monthly Charges ($)</label>
+            <input type="number" id="monthly-charges" class="form-input" placeholder="e.g. 75.50" step="0.01" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Total Charges ($)</label>
+          <input type="number" id="total-charges" class="form-input" placeholder="Auto-calculated or override" step="0.01">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Contract Type</label>
+            <select id="contract-type" class="form-input">
+              <option>Month-to-month</option>
+              <option>One year</option>
+              <option>Two year</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Internet Service</label>
+            <select id="internet-service" class="form-input">
+              <option>Fiber optic</option>
+              <option>DSL</option>
+              <option>No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Payment Method</label>
+          <select id="payment-method" class="form-input">
+            <option>Electronic check</option>
+            <option>Mailed check</option>
+            <option>Bank transfer (automatic)</option>
+            <option>Credit card (automatic)</option>
+          </select>
+        </div>
+
+        <!-- Toggle flags -->
+        <div class="toggle-grid">
+          <label class="toggle-label"><input type="checkbox" id="senior">  Senior Citizen</label>
+          <label class="toggle-label"><input type="checkbox" id="partner"> Partner</label>
+          <label class="toggle-label"><input type="checkbox" id="dependents"> Dependents</label>
+          <label class="toggle-label"><input type="checkbox" id="phone">   Phone Service</label>
+          <label class="toggle-label"><input type="checkbox" id="multi-lines"> Multiple Lines</label>
+          <label class="toggle-label"><input type="checkbox" id="security"> Online Security</label>
+          <label class="toggle-label"><input type="checkbox" id="backup">  Online Backup</label>
+          <label class="toggle-label"><input type="checkbox" id="protection"> Device Protection</label>
+          <label class="toggle-label"><input type="checkbox" id="support"> Tech Support</label>
+          <label class="toggle-label"><input type="checkbox" id="tv">      Streaming TV</label>
+          <label class="toggle-label"><input type="checkbox" id="movies">  Streaming Movies</label>
+          <label class="toggle-label"><input type="checkbox" id="paperless"> Paperless Billing</label>
+        </div>
+
+        <div id="pred-error" class="error-msg" style="display:none;"></div>
+        <button type="submit" id="btn-predict" class="btn-primary btn-full" style="margin-top:1.5rem;">
+          Run Prediction
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Result ── -->
+    <div id="result-panel" class="glass-card result-card" style="display:none;">
+      <h3 style="margin-top:0;">Prediction Result</h3>
+      <div style="display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; margin-bottom:1.5rem;">
+        <div style="width:200px; text-align:center;">
+          <canvas id="churn-chart" width="200" height="200"></canvas>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">Churn Risk</p>
+        </div>
+        <div style="width:200px; text-align:center;">
+          <canvas id="profile-chart" width="200" height="200"></canvas>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">Customer Profile vs Avg</p>
+        </div>
+      </div>
+      <div id="risk-badge-wrap" style="text-align:center;margin-bottom:1.5rem;"></div>
+      <div class="result-detail">
+        <p><strong>Churn Probability:</strong> <span id="prob-text"></span></p>
+        <p><strong>Risk Classification:</strong> <span id="risk-text"></span></p>
+        <p><strong>Recommendation:</strong></p>
+        <p id="rec-text" style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;"></p>
+      </div>
+      <button onclick="resetForm()" class="btn-outline btn-full" style="margin-top:1rem;">New Prediction</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chartInstance = null;
+let profileChartInstance = null;
+
+AppAPI.requireAuth();
+
+// Auto-calculate total charges
+['tenure','monthly-charges'].forEach(id =>
+  document.getElementById(id).addEventListener('input', () => {
+    const t = parseFloat(document.getElementById('tenure').value) || 0;
+    const m = parseFloat(document.getElementById('monthly-charges').value) || 0;
+    if (!document.getElementById('total-charges').dataset.manual)
+      document.getElementById('total-charges').value = (t * m).toFixed(2);
+  })
+);
+document.getElementById('total-charges').addEventListener('input', function() {
+  this.dataset.manual = 'true';
+});
+
+document.getElementById('predict-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-predict');
+  const err = document.getElementById('pred-error');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Analysing…';
+
+  const features = {
+    tenure:           parseInt(document.getElementById('tenure').value),
+    monthly_charges:  parseFloat(document.getElementById('monthly-charges').value),
+    total_charges:    parseFloat(document.getElementById('total-charges').value) || 0,
+    contract_type:    document.getElementById('contract-type').value,
+    internet_service: document.getElementById('internet-service').value,
+    payment_method:   document.getElementById('payment-method').value,
+    senior_citizen:   document.getElementById('senior').checked      ? 'Yes' : 'No',
+    partner:          document.getElementById('partner').checked      ? 'Yes' : 'No',
+    dependents:       document.getElementById('dependents').checked   ? 'Yes' : 'No',
+    phone_service:    document.getElementById('phone').checked        ? 'Yes' : 'No',
+    multiple_lines:   document.getElementById('multi-lines').checked  ? 'Yes' : 'No',
+    online_security:  document.getElementById('security').checked     ? 'Yes' : 'No',
+    online_backup:    document.getElementById('backup').checked       ? 'Yes' : 'No',
+    device_protection:document.getElementById('protection').checked   ? 'Yes' : 'No',
+    tech_support:     document.getElementById('support').checked      ? 'Yes' : 'No',
+    streaming_tv:     document.getElementById('tv').checked           ? 'Yes' : 'No',
+    streaming_movies: document.getElementById('movies').checked       ? 'Yes' : 'No',
+    paperless_billing:document.getElementById('paperless').checked    ? 'Yes' : 'No',
+  };
+
+  try {
+    const res = await AppAPI.fetch('/api/predictions/single', {
+      method: 'POST',
+      body: JSON.stringify({ features })
+    });
+
+    const prob   = res.churn_probability;
+    const risk   = res.risk_level;
+    const colors = { High:'#ef4444', Medium:'#f97316', Low:'#22c55e' };
+    const color  = colors[risk] || '#3b82f6';
+
+    document.getElementById('result-panel').style.display = 'block';
+
+    // Chart 1: Doughnut
+    if (chartInstance) chartInstance.destroy();
+    const ctx = document.getElementById('churn-chart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Churn Risk', 'Retention'],
+        datasets: [{ data: [prob, 100 - prob], backgroundColor: [color, 'rgba(255,255,255,0.08)'],
+          borderColor: [color, 'rgba(255,255,255,0.1)'], borderWidth: 2, hoverOffset: 4 }]
+      },
+      options: {
+        cutout: '72%', plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.toFixed(1)}%` } } }
+      }
+    });
+
+    // Chart 2: Radar Profile
+    if (profileChartInstance) profileChartInstance.destroy();
+    const pctx = document.getElementById('profile-chart').getContext('2d');
+    
+    // Normalize values roughly (0 to 100 scale) for visual comparison
+    const normTenure = Math.min(100, (features.tenure / 72) * 100);
+    const normCharges = Math.min(100, (features.monthly_charges / 120) * 100);
+    const hasInternet = features.internet_service !== 'No' ? 100 : 0;
+    const isLockedIn = features.contract_type !== 'Month-to-month' ? 100 : 0;
+    const additionalServices = [features.online_security, features.online_backup, features.device_protection, features.tech_support].filter(x => x==='Yes').length;
+    const normServices = (additionalServices / 4) * 100;
+
+    profileChartInstance = new Chart(pctx, {
+      type: 'radar',
+      data: {
+        labels: ['Tenure', 'Monthly Cost', 'Internet', 'Contract Lock', 'Extra Services'],
+        datasets: [{
+          label: 'This Customer',
+          data: [normTenure, normCharges, hasInternet, isLockedIn, normServices],
+          backgroundColor: 'rgba(59, 130, 246, 0.2)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+          borderWidth: 1
+        }, {
+          label: 'Average Customer',
+          data: [45, 55, 75, 40, 50],
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderColor: 'rgba(255, 255, 255, 0.2)',
+          borderWidth: 1,
+          borderDash: [5, 5]
+        }]
+      },
+      options: {
+        scales: {
+            r: { angleLines: { color: 'rgba(255,255,255,0.1)' }, grid: { color: 'rgba(255,255,255,0.1)' }, pointLabels: { color: 'rgba(255,255,255,0.5)', font: {size: 10} }, ticks: { display: false, max: 100, min: 0 } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    document.getElementById('prob-text').textContent  = `${prob}%`;
+    document.getElementById('risk-text').textContent  = `${risk} Risk`;
+    document.getElementById('rec-text').textContent   = res.recommendation;
+    document.getElementById('risk-badge-wrap').innerHTML =
+      `<span class="risk-badge risk-${risk.toLowerCase()}" style="font-size:1.1rem;padding:0.5rem 1.5rem;">${risk} Risk — ${prob}%</span>`;
+
+    document.getElementById('result-panel').scrollIntoView({ behavior:'smooth' });
+    AppAPI.showToast(`Prediction complete: ${risk} Risk`, risk === 'High' ? 'error' : risk === 'Medium' ? 'warning' : 'success');
+  } catch(e2) {
+    err.textContent   = e2.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run Prediction';
+  }
+});
+
+function resetForm() {
+  document.getElementById('predict-form').reset();
+  document.getElementById('result-panel').style.display = 'none';
+  delete document.getElementById('total-charges').dataset.manual;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  if (profileChartInstance) { profileChartInstance.destroy(); profileChartInstance = null; }
+}
+</script>
+{% endblock %}

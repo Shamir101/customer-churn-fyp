@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="hero" style="animation: fadeIn 0.8s ease-out;">
+  <div class="hero-badge">AI-Powered Telecom Analytics</div>
+  <h1 class="hero-title">Predict Customer Churn<br><span class="gradient-text">Before It Happens</span></h1>
+  <p class="hero-sub">ChurnSense uses LightGBM machine learning to identify at-risk telecom customers in real time, enabling targeted retention strategies that reduce churn and protect revenue.</p>
+  <div class="hero-cta">
+    <a href="/register" class="btn-primary btn-lg">Start Predicting Free</a>
+    <a href="/login"    class="btn-outline btn-lg">Sign In</a>
+  </div>
+</section>
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+  <div class="stat-item"><span class="stat-num">7,043</span><span class="stat-label">Training Records</span></div>
+  <div class="stat-item"><span class="stat-num">78.4%</span><span class="stat-label">Model Accuracy</span></div>
+  <div class="stat-item"><span class="stat-num">0.83</span><span class="stat-label">ROC-AUC Score</span></div>
+  <div class="stat-item"><span class="stat-num">20</span><span class="stat-label">Predictive Features</span></div>
+</div>
+
+<!-- Feature Cards -->
+<div class="section-title">What ChurnSense Does</div>
+<div class="card-grid">
+  <div class="glass-card feature-card">
+    <div class="card-icon">🔮</div>
+    <h3>Real-Time Prediction</h3>
+    <p>Input any customer's attributes and receive an instant churn probability score with a risk classification badge.</p>
+  </div>
+  <div class="glass-card feature-card">
+    <div class="card-icon">📊</div>
+    <h3>Visual Risk Dashboard</h3>
+    <p>Interactive doughnut charts and colour-coded risk tiers (High / Medium / Low) make results instantly actionable.</p>
+  </div>
+  <div class="glass-card feature-card">
+    <div class="card-icon">🤖</div>
+    <h3>LightGBM Engine</h3>
+    <p>Trained on 7,043 telecom subscriber records across 20 features. Outperforms XGBoost with 82.98% ROC-AUC.</p>
+  </div>
+  <div class="glass-card feature-card">
+    <div class="card-icon">🎯</div>
+    <h3>Retention Strategies</h3>
+    <p>Automatically receive targeted retention recommendations based on predicted churn risk level.</p>
+  </div>
+  <div class="glass-card feature-card">
+    <div class="card-icon">🔒</div>
+    <h3>Secure Access</h3>
+    <p>JWT-based authentication protects all prediction features. Passwords hashed with industry-standard Werkzeug.</p>
+  </div>
+  <div class="glass-card feature-card">
+    <div class="card-icon">📂</div>
+    <h3>Dataset Management</h3>
+    <p>Upload your own CSV datasets, track upload history, and manage data pipelines from the admin panel.</p>
+  </div>
+</div>
+{% endblock %}

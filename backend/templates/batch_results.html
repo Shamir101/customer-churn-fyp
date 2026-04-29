@@ -1,0 +1,158 @@
+{% extends "layout.html" %}
+{% block title %}Batch Prediction Results{% endblock %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div style="animation:fadeIn 0.5s ease-out;">
+  <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h2>Batch <span class="gradient-text">Results</span></h2>
+      <p id="filename-text" style="color:var(--text-muted);">Loading dataset...</p>
+    </div>
+    <a href="/api/predictions/batch/{{dataset_id}}/download" class="btn-primary" id="download-btn" style="display:none;">Download CSV</a>
+  </div>
+
+  <div id="loading-spinner" style="text-align:center; padding: 3rem;">
+    <h3>Running predictions...</h3>
+    <p style="color:var(--text-muted)">Please wait, scoring customers.</p>
+  </div>
+
+  <div id="dashboard-content" style="display:none;">
+    <!-- Top Stats -->
+    <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:2rem;">
+      <div class="glass-card" style="text-align:center;">
+        <h4 style="margin:0; color:var(--text-muted);">Total Customers</h4>
+        <h2 id="stat-total" style="margin:0.5rem 0 0;">0</h2>
+      </div>
+      <div class="glass-card" style="text-align:center;">
+        <h4 style="margin:0; color:var(--text-muted);">Average Churn Risk</h4>
+        <h2 id="stat-avg" style="margin:0.5rem 0 0;">0%</h2>
+      </div>
+      <div class="glass-card" style="text-align:center; border-left: 4px solid #ef4444;">
+        <h4 style="margin:0; color:var(--text-muted);">High Risk</h4>
+        <h2 id="stat-high" style="margin:0.5rem 0 0;">0</h2>
+      </div>
+      <div class="glass-card" style="text-align:center; border-left: 4px solid #f97316;">
+        <h4 style="margin:0; color:var(--text-muted);">Medium Risk</h4>
+        <h2 id="stat-med" style="margin:0.5rem 0 0;">0</h2>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="card-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:2rem;">
+      <div class="glass-card">
+        <h3 style="margin-top:0;">Risk Distribution</h3>
+        <canvas id="risk-chart" style="max-height: 250px;"></canvas>
+      </div>
+      <div class="glass-card">
+        <h3 style="margin-top:0;">Churn Probability</h3>
+        <canvas id="prob-chart" style="max-height: 250px;"></canvas>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="glass-card" style="overflow-x:auto;">
+      <h3 style="margin-top:0;">Data Preview (Top 100)</h3>
+      <table class="data-table">
+        <thead>
+          <tr id="table-head"></tr>
+        </thead>
+        <tbody id="table-body">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+AppAPI.requireAuth();
+
+async function loadResults() {
+  try {
+    const token = AppAPI._token();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const res = await window.fetch(`/api/predictions/batch/{{dataset_id}}/json`, { headers });
+    
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to load results (${res.status})`);
+    }
+
+    const data = await res.json();
+    
+    // Hide spinner, show content
+    document.getElementById('loading-spinner').style.display = 'none';
+    document.getElementById('dashboard-content').style.display = 'block';
+    document.getElementById('download-btn').style.display = 'inline-block';
+    
+    // Update texts
+    document.getElementById('filename-text').textContent = data.filename;
+    document.getElementById('stat-total').textContent = data.summary.total.toLocaleString();
+    document.getElementById('stat-avg').textContent = data.summary.avg_churn + '%';
+    document.getElementById('stat-high').textContent = data.summary.high.toLocaleString();
+    document.getElementById('stat-med').textContent = data.summary.medium.toLocaleString();
+
+    // Chart 1: Risk Distribution (Doughnut)
+    const ctxRisk = document.getElementById('risk-chart').getContext('2d');
+    new Chart(ctxRisk, {
+      type: 'doughnut',
+      data: {
+        labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+        datasets: [{
+          data: [data.summary.high, data.summary.medium, data.summary.low],
+          backgroundColor: ['#ef4444', '#f97316', '#22c55e'],
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 2
+        }]
+      },
+      options: { plugins: { legend: { position: 'right', labels: {color: '#fff'} } } }
+    });
+
+    // Chart 2: Simple Bar for total vs high
+    const ctxProb = document.getElementById('prob-chart').getContext('2d');
+    new Chart(ctxProb, {
+      type: 'bar',
+      data: {
+        labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+        datasets: [{
+          label: 'Number of Customers',
+          data: [data.summary.high, data.summary.medium, data.summary.low],
+          backgroundColor: ['rgba(239, 68, 68, 0.8)', 'rgba(249, 115, 22, 0.8)', 'rgba(34, 197, 94, 0.8)']
+        }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: {color: 'rgba(255,255,255,0.1)'}, ticks: {color: '#fff'} }, x: { grid: {display: false}, ticks: {color: '#fff'} } } }
+    });
+
+    // Populate Table
+    if (data.records && data.records.length > 0) {
+        // Find Churn prob, risk, rec, and a few IDs
+        const importantKeys = ['Churn Probability (%)', 'Risk Level', 'Recommendation'];
+        const otherKeys = Object.keys(data.records[0]).filter(k => !importantKeys.includes(k)).slice(0, 5);
+        const keys = [...importantKeys, ...otherKeys];
+        
+        // Headers
+        document.getElementById('table-head').innerHTML = keys.map(k => `<th>${k}</th>`).join('');
+        
+        // Body
+        document.getElementById('table-body').innerHTML = data.records.map(row => {
+            return `<tr>${keys.map(k => {
+                let val = row[k];
+                if (k === 'Risk Level') {
+                    let cls = val==='High' ? 'risk-high' : val==='Medium' ? 'risk-medium' : 'risk-low';
+                    return `<td><span class="risk-badge ${cls}">${val}</span></td>`;
+                }
+                return `<td>${val}</td>`;
+            }).join('')}</tr>`;
+        }).join('');
+    }
+
+  } catch(e) {
+    document.getElementById('loading-spinner').innerHTML = `<h3 style="color:#ef4444;">Error</h3><p>${e.message}</p>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadResults);
+</script>
+{% endblock %}

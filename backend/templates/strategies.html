@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block title %}Retention Strategies{% endblock %}
+{% block content %}
+<div style="animation:fadeIn 0.5s ease-out;">
+  <div class="page-header">
+    <h2>Retention <span class="gradient-text">Strategies</span></h2>
+    <p style="color:var(--text-muted);">Data-driven recommendations for each customer risk tier.</p>
+  </div>
+  <div class="card-grid" id="strategy-cards">
+    <div class="glass-card"><p style="color:var(--text-muted);">Loading…</p></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const levels = ['High','Medium','Low'];
+  const icons  = { High:'🔴', Medium:'🟡', Low:'🟢' };
+  const cards  = [];
+  for (const lvl of levels) {
+    try {
+      const res = await fetch(`/api/retention/${lvl}`);
+      const data = await res.json();
+      cards.push(`
+        <div class="glass-card">
+          <h3 style="margin-top:0;">${icons[lvl]} ${lvl} Risk Strategies</h3>
+          <ul style="padding-left:1.2rem;color:var(--text-muted);font-size:0.9rem;line-height:1.8;">
+            ${data.strategies.map(s=>`<li>${s}</li>`).join('')}
+          </ul>
+        </div>`);
+    } catch(e) { console.error(e); }
+  }
+  document.getElementById('strategy-cards').innerHTML = cards.join('');
+});
+</script>
+{% endblock %}

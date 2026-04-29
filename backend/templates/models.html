@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block title %}Model Metrics{% endblock %}
+{% block content %}
+<div style="animation:fadeIn 0.5s ease-out;">
+  <div class="page-header">
+    <h2>ML Model <span class="gradient-text">Performance</span></h2>
+    <p style="color:var(--text-muted);">Comparison of all trained models evaluated on the IBM Telco dataset.</p>
+  </div>
+  <div class="glass-card" style="overflow-x:auto;margin-bottom:2rem;">
+    <table class="data-table" id="model-table">
+      <thead>
+        <tr><th>Model</th><th>Algorithm</th><th>Accuracy</th><th>ROC-AUC</th><th>Status</th></tr>
+      </thead>
+      <tbody><tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Loading…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="glass-card">
+    <h3 style="margin-top:0;">📌 Why LightGBM was selected</h3>
+    <p style="color:var(--text-muted);line-height:1.8;">
+      LightGBM achieved the highest Accuracy (78.39%) and ROC-AUC (0.8298) among all evaluated models. 
+      In addition to its superior predictive performance, LightGBM offers significantly faster training speeds 
+      than XGBoost on tabular datasets, making it the optimal choice for production deployment in the 
+      ChurnSense backend inference engine.
+    </p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res  = await fetch('/api/models/');
+    const data = await res.json();
+    const statusClass = s => s === 'Production' ? 'risk-low' : 'risk-med';
+    document.querySelector('#model-table tbody').innerHTML = data.models.map(m => `
+      <tr>
+        <td><strong>${m.name}</strong></td>
+        <td>${m.algorithm}</td>
+        <td>${m.accuracy}%</td>
+        <td>${m.auc}</td>
+        <td><span class="risk-badge ${statusClass(m.status)}">${m.status}</span></td>
+      </tr>`).join('');
+  } catch(e) { console.error(e); }
+});
+</script>
+{% endblock %}

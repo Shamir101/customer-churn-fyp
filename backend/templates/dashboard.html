@@ -1,0 +1,122 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div style="animation:fadeIn 0.5s ease-out;">
+  <div class="page-header">
+    <h2>Welcome back, <span id="user-name" class="gradient-text">User</span></h2>
+    <p style="color:var(--text-muted);">Here's your ChurnSense overview</p>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stats-grid">
+    <div class="glass-card stat-card">
+      <div class="stat-icon">🔮</div>
+      <div class="stat-info">
+        <span id="total-predictions" class="big-num">—</span>
+        <span class="stat-label">Total Predictions</span>
+      </div>
+    </div>
+    <div class="glass-card stat-card">
+      <div class="stat-icon">🔴</div>
+      <div class="stat-info">
+        <span id="high-risk-count" class="big-num">—</span>
+        <span class="stat-label">High Risk Customers</span>
+      </div>
+    </div>
+    <div class="glass-card stat-card">
+      <div class="stat-icon">🟡</div>
+      <div class="stat-info">
+        <span id="med-risk-count" class="big-num">—</span>
+        <span class="stat-label">Medium Risk Customers</span>
+      </div>
+    </div>
+    <div class="glass-card stat-card">
+      <div class="stat-icon">🟢</div>
+      <div class="stat-info">
+        <span id="low-risk-count" class="big-num">—</span>
+        <span class="stat-label">Low Risk Customers</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section-title" style="margin-top:2.5rem;">Quick Actions</div>
+  <div class="card-grid">
+    <a href="/predict" class="glass-card feature-card action-card">
+      <div class="card-icon">🔮</div>
+      <h3>New Prediction</h3>
+      <p>Run a real-time churn prediction for a single customer using the LightGBM model.</p>
+    </a>
+    <a href="/admin" class="glass-card feature-card action-card">
+      <div class="card-icon">📂</div>
+      <h3>Upload Dataset</h3>
+      <p>Upload a customer CSV dataset for batch processing and management.</p>
+    </a>
+    <a href="/strategies" class="glass-card feature-card action-card">
+      <div class="card-icon">🎯</div>
+      <h3>Retention Strategies</h3>
+      <p>Browse recommended actions for High, Medium, and Low risk customers.</p>
+    </a>
+    <a href="/models" class="glass-card feature-card action-card">
+      <div class="card-icon">📈</div>
+      <h3>Model Metrics</h3>
+      <p>View accuracy, ROC-AUC, and performance comparisons for all trained models.</p>
+    </a>
+  </div>
+
+  <!-- Recent Predictions -->
+  <div class="section-title" style="margin-top:2.5rem;">Recent Predictions</div>
+  <div class="glass-card" style="overflow-x:auto;">
+    <table class="data-table" id="history-table">
+      <thead>
+        <tr><th>#</th><th>Date</th><th>Churn Probability</th><th>Risk Level</th></tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  AppAPI.requireAuth();
+  const name = localStorage.getItem('userName');
+  if (name) document.getElementById('user-name').textContent = name;
+
+  try {
+    const res = await AppAPI.fetch('/api/predictions/history');
+    const rows = res.history || [];
+
+    let high = 0, med = 0, low = 0;
+    rows.forEach(r => {
+      if (r.risk_level === 'High')   high++;
+      else if (r.risk_level === 'Medium') med++;
+      else low++;
+    });
+
+    document.getElementById('total-predictions').textContent = rows.length;
+    document.getElementById('high-risk-count').textContent   = high;
+    document.getElementById('med-risk-count').textContent    = med;
+    document.getElementById('low-risk-count').textContent    = low;
+
+    const tbody = document.getElementById('history-body');
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No predictions yet. <a href="/predict" class="link">Make your first prediction →</a></td></tr>';
+    } else {
+      tbody.innerHTML = rows.map((r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${new Date(r.prediction_date).toLocaleString()}</td>
+          <td>${r.churn_probability}%</td>
+          <td><span class="risk-badge risk-${r.risk_level.toLowerCase()}">${r.risk_level} Risk</span></td>
+        </tr>`).join('');
+    }
+  } catch(e) {
+    console.error(e);
+  }
+});
+</script>
+{% endblock %}

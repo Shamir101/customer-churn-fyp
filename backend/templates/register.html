@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="glass-card auth-card" style="animation: fadeIn 0.5s ease-out;">
+    <div class="auth-logo">⚡ ChurnSense</div>
+    <h2 class="auth-title">Create Account</h2>
+    <p class="auth-sub">Start predicting churn in minutes</p>
+
+    <form id="register-form">
+      <div class="form-group">
+        <label class="form-label" for="name">Full Name</label>
+        <input type="text" id="name" class="form-input" placeholder="Muhammad Ali" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input type="email" id="email" class="form-input" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input type="password" id="password" class="form-input" placeholder="Min 8 chars, 1 letter + 1 number" required autocomplete="new-password">
+        <!-- Password strength bar -->
+        <div class="strength-bar-wrap">
+          <div class="strength-bar" id="strength-bar"></div>
+        </div>
+        <span class="strength-label" id="strength-label"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="confirm-password">Confirm Password</label>
+        <input type="password" id="confirm-password" class="form-input" placeholder="Repeat your password" required autocomplete="new-password">
+      </div>
+      <div class="form-check">
+        <input type="checkbox" id="terms" required>
+        <label for="terms">I agree to the Terms &amp; Conditions</label>
+      </div>
+      <div id="error-msg" class="error-msg" style="display:none;"></div>
+      <button type="submit" id="btn-register" class="btn-primary btn-full">Create Account</button>
+    </form>
+
+    <p class="auth-footer">Already have an account? <a href="/login" class="link">Sign in</a></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Password strength indicator
+document.getElementById('password').addEventListener('input', function() {
+  const v = this.value;
+  const bar   = document.getElementById('strength-bar');
+  const label = document.getElementById('strength-label');
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (/[a-zA-Z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^a-zA-Z0-9]/.test(v)) score++;
+
+  const levels = ['', 'weak', 'fair', 'strong', 'very-strong'];
+  const texts  = ['', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+  bar.className   = 'strength-bar ' + (levels[score] || '');
+  label.textContent = texts[score] || '';
+  label.className   = 'strength-label ' + (levels[score] || '');
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn    = document.getElementById('btn-register');
+  const errDiv = document.getElementById('error-msg');
+  errDiv.style.display = 'none';
+
+  const password = document.getElementById('password').value;
+  const confirm  = document.getElementById('confirm-password').value;
+  if (password !== confirm) {
+    errDiv.textContent = 'Passwords do not match.';
+    errDiv.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    await AppAPI.register({
+      name:            document.getElementById('name').value.trim(),
+      email:           document.getElementById('email').value.trim(),
+      password:        password,
+      confirmPassword: confirm
+    });
+    AppAPI.showToast('Account created! Please sign in.', 'success');
+    setTimeout(() => window.location.href = '/login', 1200);
+  } catch(err) {
+    errDiv.textContent   = err.message;
+    errDiv.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Create Account';
+  }
+});
+</script>
+{% endblock %}
