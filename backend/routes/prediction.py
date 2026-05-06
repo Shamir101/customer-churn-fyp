@@ -8,13 +8,21 @@ bp = Blueprint('prediction', __name__, url_prefix='/api/predictions')
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'ml', 'lgbm_model.pkl')
 
-# Load model once at import time
-try:
-    _model = joblib.load(MODEL_PATH)
-    print("[SUCCESS] LightGBM model loaded successfully.")
-except Exception as e:
-    _model = None
-    print(f"[WARNING] Could not load LightGBM model: {e}")
+# Lazy-load model on first request to avoid Windows multiprocessing deadlock
+_model = None
+_model_loaded = False
+
+def _get_model():
+    global _model, _model_loaded
+    if not _model_loaded:
+        _model_loaded = True
+        try:
+            _model = joblib.load(MODEL_PATH)
+            print("[SUCCESS] LightGBM model loaded successfully.")
+        except Exception as e:
+            _model = None
+            print(f"[WARNING] Could not load LightGBM model: {e}")
+    return _model
 
 def _get_recommendation(risk_level):
     recommendations = {
@@ -42,7 +50,8 @@ def predict_single():
 
     # ── Real inference ──────────────────────────────────────────────────────
     churn_prob = 0.75   # fallback
-    if _model is not None:
+    model = _get_model()
+    if model is not None:
         try:
             # Build a one-row DataFrame that matches the training schema
             tenure          = float(features.get('tenure', 12))
@@ -112,7 +121,7 @@ def predict_single():
                     df[col] = 0
             df = df[expected_cols]
 
-            churn_prob = float(_model.predict_proba(df)[:, 1][0])
+            churn_prob = float(model.predict_proba(df)[:, 1][0])
         except Exception as ex:
             print(f"Inference error: {ex} — using fallback probability")
 
@@ -164,7 +173,7 @@ def _process_batch(dataset_id, user_id):
     except Exception as e:
         return None, ({'error': f'Cannot read file: {e}'}, 400)
 
-    if _model is None:
+    if _get_model() is None:
         return None, ({'error': 'Model not loaded.'}, 500)
 
     col_file = os.path.join(os.path.dirname(__file__), '..', 'ml', 'feature_columns.json')
@@ -189,7 +198,7 @@ def _process_batch(dataset_id, user_id):
     df_encoded = df_encoded[expected_cols]
 
     try:
-        probs = _model.predict_proba(df_encoded)[:, 1]
+        probs = _get_model().predict_proba(df_encoded)[:, 1]
     except Exception as e:
         return None, ({'error': f'Inference failed: {e}'}, 500)
     
