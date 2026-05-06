@@ -124,3 +124,17 @@ def delete_dataset(dataset_id):
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
+
+@bp.route('/template', methods=['GET'])
+def download_template():
+    from flask import Response
+    import io
+    output = io.StringIO()
+    output.write("tenure,MonthlyCharges,Contract,InternetService,PaymentMethod\n")
+    output.write("1,50.0,Month-to-month,Fiber optic,Electronic check\n")
+    
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-disposition": "attachment; filename=template.csv"}
+    )
