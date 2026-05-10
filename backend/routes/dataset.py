@@ -130,11 +130,24 @@ def download_template():
     from flask import Response
     import io
     output = io.StringIO()
-    output.write("tenure,MonthlyCharges,Contract,InternetService,PaymentMethod\n")
-    output.write("1,50.0,Month-to-month,Fiber optic,Electronic check\n")
-    
+
+    # Comprehensive header with all 19 predictive features
+    header = "gender,SeniorCitizen,Partner,Dependents,tenure,PhoneService,MultipleLines,InternetService,OnlineSecurity,OnlineBackup,DeviceProtection,TechSupport,StreamingTV,StreamingMovies,Contract,PaperlessBilling,PaymentMethod,MonthlyCharges,TotalCharges"
+    output.write(header + "\n")
+
+    # 5 realistic sample rows based on actual telecom data
+    sample_rows = [
+        "Female,0,Yes,No,1,No,No phone service,DSL,No,Yes,No,No,No,No,Month-to-month,Yes,Electronic check,29.85,29.85",
+        "Male,0,No,No,34,Yes,No,DSL,Yes,No,Yes,No,No,No,One year,No,Mailed check,56.95,1889.5",
+        "Male,0,No,No,2,Yes,No,DSL,Yes,Yes,No,No,No,No,Month-to-month,Yes,Mailed check,53.85,108.15",
+        "Male,0,No,No,45,No,No phone service,DSL,Yes,No,Yes,Yes,No,No,One year,No,Bank transfer (automatic),42.3,1840.75",
+        "Female,0,No,No,2,Yes,No,Fiber optic,No,No,No,No,No,No,Month-to-month,Yes,Electronic check,70.7,151.65"
+    ]
+    for row in sample_rows:
+        output.write(row + "\n")
+
     return Response(
         output.getvalue(),
         mimetype="text/csv",
-        headers={"Content-disposition": "attachment; filename=template.csv"}
+        headers={"Content-disposition": "attachment; filename=churn_dataset_template.csv"}
     )
